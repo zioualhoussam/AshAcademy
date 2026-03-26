@@ -34,7 +34,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Static files LAST
-app.use(express.static(path.join(__dirname, '../ASH-Educational-system')));
+app.use(express.static(path.join(__dirname, 'frontend')));
 
 // Database setup
 const db = new sqlite3.Database('./ash_database.db', (err) => {
@@ -329,9 +329,9 @@ app.get('/api/admin/stats', requireAuth, (req, res) => {
 app.get('*', (req, res) => {
   // Check if it's the admin route
   if (req.path.startsWith('/admin')) {
-    res.sendFile(path.join(__dirname, '../ASH-Educational-system/admin.html'));
+    res.sendFile(path.join(__dirname, 'frontend/admin.html'));
   } else {
-    res.sendFile(path.join(__dirname, '../ASH-Educational-system/ash-educational-center.html'));
+    res.sendFile(path.join(__dirname, 'frontend/ash-educational-center.html'));
   }
 });
 
