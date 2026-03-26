@@ -3,56 +3,20 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const session = require('express-session');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Simple password check for admin access
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+
 // Environment detection
 const isProduction = process.env.NODE_ENV === 'production';
-const isHttps = process.env.HTTPS === 'true' || isProduction;
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'ash-jwt-secret-key';
-
-// Session middleware MUST come first
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'ash-educational-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  name: 'ash-admin-session',
-  cookie: { 
-    secure: false, // Temporarily disable to test
-    maxAge: 24 * 60 * 60 * 1000,
-    httpOnly: true,
-    sameSite: 'lax' // Use 'lax' for both environments
-  }
-}));
-
-// Then CORS - Updated for production
-const allowedOrigins = [
-  'http://localhost:5000', 
-  'http://127.0.0.1:5000',
-  'https://ash-educational-center-production.up.railway.app'
-];
-
+// Simple CORS configuration
 app.use(cors({
-  credentials: true,
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl, or same-origin)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: true, // Allow all origins for simplicity
+  credentials: true
 }));
 
 // Then body parsers
@@ -282,8 +246,7 @@ app.get('/api/contacts', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
-    timestamp: new Date().toISOString(),
-    session: req.session 
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -293,153 +256,46 @@ app.get('/api/test', (req, res) => {
     message: 'API is working',
     timestamp: new Date().toISOString(),
     headers: {
-      cookie: req.headers.cookie ? 'present' : 'missing',
       origin: req.headers.origin || 'same-origin'
     }
   });
 });
 
-// Simple session debug endpoint
-app.get('/api/session-debug', (req, res) => {
-  res.json({
-    sessionId: req.sessionID,
-    session: req.session,
-    cookies: req.headers.cookie,
-    origin: req.headers.origin,
-    environment: {
-      NODE_ENV: process.env.NODE_ENV,
-      isProduction,
-      isHttps
-    }
-  });
-});
-
-// Test endpoint for debugging
-app.get('/api/admin/test', (req, res) => {
-  console.log('=== AUTH DEBUG INFO ===');
-  console.log('Environment:', { NODE_ENV: process.env.NODE_ENV, isProduction, isHttps });
-  console.log('Session ID:', req.sessionID);
-  console.log('Session data:', req.session);
-  console.log('Cookies:', req.headers.cookie);
-  console.log('Origin:', req.headers.origin);
-  console.log('User-Agent:', req.headers['user-agent']);
-  res.json({ 
-    environment: { NODE_ENV: process.env.NODE_ENV, isProduction, isHttps },
-    sessionId: req.sessionID,
-    session: req.session,
-    cookies: req.headers.cookie,
-    origin: req.headers.origin
-  });
-});
-
-// Admin Authentication Middleware - Supports both Session and JWT
+// Simple Admin Authentication Middleware
 function requireAuth(req, res, next) {
-  console.log('=== AUTH MIDDLEWARE ===');
-  console.log('Session ID:', req.sessionID);
-  console.log('Session data:', req.session);
-  console.log('Origin:', req.headers.origin);
-  console.log('Authorization header:', req.headers.authorization);
+  const authHeader = req.headers.authorization;
   
-  // Check session first
-  if (req.session && req.session.authenticated) {
-    console.log('✅ Authenticated via session, proceeding...');
+  if (authHeader === `Bearer ${ADMIN_PASSWORD}`) {
     return next();
   }
   
-  // Check JWT token as fallback
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      console.log('✅ Authenticated via JWT, proceeding...');
-      req.user = decoded.user; // Attach user to request
-      return next();
-    } catch (jwtError) {
-      console.log('❌ JWT verification failed:', jwtError.message);
-    }
-  }
-  
-  console.log('❌ Auth failed - no valid session or JWT');
-  console.log('Session exists:', !!req.session);
-  console.log('Session authenticated:', req.session?.authenticated);
-  console.log('Has Authorization header:', !!authHeader);
-  
   res.status(401).json({ 
     success: false, 
-    message: 'Authentication required',
-    debug: {
-      hasSession: !!req.session,
-      sessionId: req.sessionID,
-      isAuthenticated: req.session?.authenticated,
-      hasAuthHeader: !!authHeader
-    }
+    message: 'Authentication required' 
   });
 }
 
-// Admin login endpoint
+// Simple admin login endpoint
 app.post('/api/admin/login', (req, res) => {
-  console.log('Login attempt:', req.body);
-  const { username, password } = req.body;
+  const { password } = req.body;
   
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: 'Username and password required' });
-  }
-  
-  const sql = 'SELECT * FROM admin_users WHERE username = ?';
-  db.get(sql, [username], (err, user) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
-    
-    console.log('User found:', user);
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-    
-    req.session.authenticated = true;
-    req.session.user = { id: user.id, username: user.username };
-    console.log('Session set:', req.session);
-    
-    // Create JWT token as fallback
-    const token = jwt.sign(
-      { user: { id: user.id, username: user.username } },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-    
-    // Save session before responding
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-        // Fallback to JWT only if session fails
-        return res.json({ 
-          success: true, 
-          message: 'Login successful (JWT only)',
-          token: token,
-          user: { id: user.id, username: user.username }
-        });
-      }
-      console.log('Session saved successfully');
-      res.json({ 
-        success: true, 
-        message: 'Login successful',
-        token: token, // Include JWT as fallback
-        user: { id: user.id, username: user.username }
-      });
+  if (password === ADMIN_PASSWORD) {
+    res.json({ 
+      success: true, 
+      message: 'Login successful',
+      token: ADMIN_PASSWORD // Simple token for frontend
     });
-  });
+  } else {
+    res.status(401).json({ 
+      success: false, 
+      message: 'Invalid password' 
+    });
+  }
 });
 
-// Admin logout endpoint
+// Simple admin logout endpoint
 app.post('/api/admin/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Logout failed' });
-    }
-    res.json({ success: true, message: 'Logout successful' });
-  });
+  res.json({ success: true, message: 'Logout successful' });
 });
 
 // Protected admin endpoints

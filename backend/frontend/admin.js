@@ -31,7 +31,6 @@ function showDashboard() {
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     
     const submitBtn = e.target.querySelector('.login-btn');
@@ -45,22 +44,18 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            credentials: 'include',
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ password })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            // Store JWT token if provided (for fallback authentication)
-            if (data.token) {
-                localStorage.setItem('adminToken', data.token);
-                localStorage.setItem('adminUser', JSON.stringify(data.user));
-            }
+            // Store the simple token
+            localStorage.setItem('adminToken', data.token);
             showToast('Login successful! Welcome back.', 'success');
             showDashboard();
         } else {
-            showToast('Invalid credentials. Please try again.', 'error');
+            showToast('Invalid password. Please try again.', 'error');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -75,13 +70,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 document.getElementById('logoutBtn').addEventListener('click', async () => {
     try {
         await fetch('/api/admin/logout', {
-            method: 'POST',
-            credentials: 'include'
+            method: 'POST'
         });
         
-        // Clear JWT token from localStorage
+        // Clear token from localStorage
         localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
         
         showToast('Logout successful', 'success');
         showLogin();
@@ -103,49 +96,31 @@ function setupEventListeners() {
 async function checkAuth() {
     try {
         console.log('Checking authentication...');
+        const token = localStorage.getItem('adminToken');
         
-        // First try with session-based auth
+        if (!token) {
+            console.log('No token found, showing login');
+            showLogin();
+            return;
+        }
+        
+        // Test if token is valid
         const response = await fetch('/api/admin/stats', {
-            credentials: 'include'
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
         });
         
         console.log('Auth check response status:', response.status);
         
         if (response.ok) {
-            console.log('User is authenticated via session, showing dashboard');
+            console.log('Token is valid, showing dashboard');
             showDashboard();
-            return;
+        } else {
+            console.log('Token invalid, clearing and showing login');
+            localStorage.removeItem('adminToken');
+            showLogin();
         }
-        
-        // If session auth fails, try JWT fallback
-        if (response.status === 401) {
-            console.log('Session auth failed, trying JWT fallback...');
-            const token = localStorage.getItem('adminToken');
-            
-            if (token) {
-                console.log('Found JWT token, trying with Bearer token...');
-                const jwtResponse = await fetch('/api/admin/stats', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                
-                console.log('JWT auth check response status:', jwtResponse.status);
-                
-                if (jwtResponse.ok) {
-                    console.log('User is authenticated via JWT, showing dashboard');
-                    showDashboard();
-                    return;
-                } else {
-                    console.log('JWT auth also failed, clearing stored token');
-                    localStorage.removeItem('adminToken');
-                    localStorage.removeItem('adminUser');
-                }
-            }
-        }
-        
-        console.log('User not authenticated, showing login');
-        showLogin();
         
     } catch (error) {
         console.error('Auth check failed:', error);
@@ -155,31 +130,25 @@ async function checkAuth() {
 
 // ─── Helper for Authenticated API Calls ─────────────────────────
 async function authenticatedFetch(url, options = {}) {
-    // Try session-based auth first
-    let response = await fetch(url, {
-        credentials: 'include',
+    const token = localStorage.getItem('adminToken');
+    
+    if (!token) {
+        showLogin();
+        throw new Error('No authentication token');
+    }
+    
+    const response = await fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        },
         ...options
     });
     
-    // If session fails, try JWT fallback
-    if (!response.ok && response.status === 401) {
-        const token = localStorage.getItem('adminToken');
-        if (token) {
-            response = await fetch(url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    ...options.headers
-                },
-                ...options
-            });
-            
-            // If JWT also fails, clear the stored token
-            if (!response.ok && response.status === 401) {
-                localStorage.removeItem('adminToken');
-                localStorage.removeItem('adminUser');
-                showLogin();
-            }
-        }
+    if (response.status === 401) {
+        localStorage.removeItem('adminToken');
+        showLogin();
+        throw new Error('Authentication failed');
     }
     
     return response;
@@ -342,16 +311,21 @@ window.addEventListener('scroll', () => {
 // ─── Initialize on Load ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is already logged in
-    authenticatedFetch('/api/admin/stats')
-    .then(response => {
-        if (response.ok) {
-            showDashboard();
-        } else {
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+        authenticatedFetch('/api/admin/stats')
+        .then(response => {
+            if (response.ok) {
+                showDashboard();
+            } else {
+                showLogin();
+            }
+        })
+        .catch(error => {
+            console.error('Initial auth check failed:', error);
             showLogin();
-        }
-    })
-    .catch(error => {
-        console.error('Initial auth check failed:', error);
+        });
+    } else {
         showLogin();
-    });
+    }
 });
