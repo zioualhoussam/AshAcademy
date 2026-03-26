@@ -23,7 +23,7 @@ app.use(session({
     secure: isHttps, // Use secure cookies in production (HTTPS)
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax' // Use 'none' for cross-site in production
+    sameSite: isProduction ? 'lax' : 'lax' // Use 'lax' for both environments for now
   }
 }));
 
@@ -270,6 +270,21 @@ app.get('/api/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     session: req.session 
+  });
+});
+
+// Simple session debug endpoint
+app.get('/api/session-debug', (req, res) => {
+  res.json({
+    sessionId: req.sessionID,
+    session: req.session,
+    cookies: req.headers.cookie,
+    origin: req.headers.origin,
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      isProduction,
+      isHttps
+    }
   });
 });
 
