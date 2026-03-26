@@ -275,8 +275,11 @@ function requireAuth(req, res, next) {
   console.log('=== AUTH DEBUG ===');
   console.log('Method:', req.method);
   console.log('URL:', req.url);
+  console.log('Content-Type:', req.headers['content-type']);
+  console.log('Full headers:', Object.keys(req.headers));
   console.log('Auth header:', authHeader);
   console.log('Expected:', `Bearer ${ADMIN_PASSWORD}`);
+  console.log('ADMIN_PASSWORD:', ADMIN_PASSWORD);
   console.log('Match:', authHeader === `Bearer ${ADMIN_PASSWORD}`);
   
   if (authHeader === `Bearer ${ADMIN_PASSWORD}`) {
