@@ -1,6 +1,26 @@
 // Admin Dashboard JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-    checkAuth();
+    // Check if user is already logged in
+    const token = localStorage.getItem('adminToken');
+    console.log('Initial token check:', token);
+    
+    if (token) {
+        authenticatedFetch('/api/admin/stats')
+        .then(response => {
+            if (response.ok) {
+                showDashboard();
+            } else {
+                showLogin();
+            }
+        })
+        .catch(error => {
+            console.error('Initial auth check failed:', error);
+            showLogin();
+        });
+    } else {
+        showLogin();
+    }
+    
     setupEventListeners();
 });
 
@@ -322,23 +342,4 @@ window.addEventListener('scroll', () => {
 });
 
 // ─── Initialize on Load ───────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if user is already logged in
-    const token = localStorage.getItem('adminToken');
-    if (token) {
-        authenticatedFetch('/api/admin/stats')
-        .then(response => {
-            if (response.ok) {
-                showDashboard();
-            } else {
-                showLogin();
-            }
-        })
-        .catch(error => {
-            console.error('Initial auth check failed:', error);
-            showLogin();
-        });
-    } else {
-        showLogin();
-    }
-});
+// This is handled by the DOMContentLoaded listener at the top of the file
