@@ -335,11 +335,13 @@ app.put('/api/test-auth', requireAuth, (req, res) => {
 
 // JWT Authentication Middleware
 function requireAuth(req, res, next) {
-  const authHeader = req.headers.authorization;
-  
-  console.log('=== JWT AUTH DEBUG ===');
+  console.log('=== JWT AUTH DEBUG START ===');
   console.log('Method:', req.method);
   console.log('URL:', req.url);
+  console.log('Request headers received:', Object.keys(req.headers));
+  console.log('Content-Type:', req.headers['content-type']);
+  
+  const authHeader = req.headers.authorization;
   console.log('Auth header:', authHeader ? 'present' : 'missing');
   console.log('JWT_SECRET used:', JWT_SECRET ? 'set' : 'not set');
   console.log('JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
@@ -360,6 +362,7 @@ function requireAuth(req, res, next) {
     console.log('✅ JWT verification successful for user:', decoded.username);
     console.log('Decoded token:', decoded);
     req.user = decoded; // Attach user info to request
+    console.log('=== JWT AUTH DEBUG END === SUCCESS ===');
     return next();
   } catch (jwtError) {
     console.log('❌ JWT verification failed:', jwtError.message);
@@ -374,6 +377,7 @@ function requireAuth(req, res, next) {
       console.log('Token decode failed:', decodeError.message);
     }
     
+    console.log('=== JWT AUTH DEBUG END === FAILED ===');
     return res.status(401).json({ 
       success: false, 
       message: 'Invalid or expired token',
