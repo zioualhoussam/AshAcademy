@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASH Educational Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <h1>ASH Educational Center</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#home">Home</a></li>
+                    <li><a href="#courses">Courses</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <li><a href="/admin" class="admin-link">Admin</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="hero">
+            <div class="hero-content">
+                <h1>Welcome to ASH Educational Center</h1>
+                <p>Empowering students with quality education and personalized learning experiences</p>
+                <a href="#courses" class="cta-button">Explore Courses</a>
+            </div>
+        </section>
+
+        <section id="courses" class="courses">
+            <div class="container">
+                <h2>Our Courses</h2>
+                <div class="courses-grid">
+                    <div class="course-card">
+                        <h3>Web Development</h3>
+                        <p>Learn modern web development technologies</p>
+                    </div>
+                    <div class="course-card">
+                        <h3>Data Science</h3>
+                        <p>Master data analysis and machine learning</p>
+                    </div>
+                    <div class="course-card">
+                        <h3>Mobile Development</h3>
+                        <p>Create amazing mobile applications</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="enrollment" class="enrollment">
+            <div class="container">
+                <h2>Enroll Now</h2>
+                <form id="enrollmentForm" class="enrollment-form">
+                    <div class="form-group">
+                        <label for="name">Full Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="course">Select Course</label>
+                        <select id="course" name="course" required>
+                            <option value="">Choose a course</option>
+                            <option value="Web Development">Web Development</option>
+                            <option value="Data Science">Data Science</option>
+                            <option value="Mobile Development">Mobile Development</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn">Submit Enrollment</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 ASH Educational Center. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
