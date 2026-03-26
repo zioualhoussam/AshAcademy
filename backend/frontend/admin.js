@@ -331,6 +331,25 @@ async function loadContacts() {
 // ─── Update Enrollment Status ───────────────────────────────────
 async function updateStatus(id, status) {
     try {
+        // First test the auth endpoint
+        console.log('=== TESTING AUTH ENDPOINT ===');
+        const testResponse = await authenticatedFetch('/api/test-auth', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ test: 'auth-test' })
+        });
+        
+        console.log('Test auth response status:', testResponse.status);
+        if (testResponse.ok) {
+            const testData = await testResponse.json();
+            console.log('Test auth response:', testData);
+        } else {
+            console.log('Test auth failed with status:', testResponse.status);
+        }
+        
+        // Now try the actual status update
         const response = await authenticatedFetch(`/api/admin/enrollments/${id}/status`, {
             method: 'PUT',
             headers: {

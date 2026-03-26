@@ -322,6 +322,17 @@ app.put('/api/test', (req, res) => {
   });
 });
 
+// PUT test endpoint with auth to isolate the issue
+app.put('/api/test-auth', requireAuth, (req, res) => {
+  res.json({ 
+    message: 'PUT API with auth is working',
+    timestamp: new Date().toISOString(),
+    method: 'PUT',
+    body: req.body,
+    user: req.user
+  });
+});
+
 // JWT Authentication Middleware
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
