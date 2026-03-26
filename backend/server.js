@@ -329,7 +329,9 @@ function requireAuth(req, res, next) {
   console.log('=== JWT AUTH DEBUG ===');
   console.log('Method:', req.method);
   console.log('URL:', req.url);
-  console.log('Auth header:', authHeader);
+  console.log('Auth header:', authHeader ? 'present' : 'missing');
+  console.log('JWT_SECRET used:', JWT_SECRET ? 'set' : 'not set');
+  console.log('JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
   
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     console.log('❌ No Authorization header or invalid format');
@@ -340,17 +342,35 @@ function requireAuth(req, res, next) {
   }
   
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  console.log('Token received:', token.substring(0, 50) + '...');
   
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     console.log('✅ JWT verification successful for user:', decoded.username);
+    console.log('Decoded token:', decoded);
     req.user = decoded; // Attach user info to request
     return next();
   } catch (jwtError) {
     console.log('❌ JWT verification failed:', jwtError.message);
+    console.log('JWT error name:', jwtError.name);
+    console.log('This usually means JWT_SECRET mismatch or expired token');
+    
+    // Try to decode without verification to see the token content
+    try {
+      const decoded = jwt.decode(token);
+      console.log('Token content (without verification):', decoded);
+    } catch (decodeError) {
+      console.log('Token decode failed:', decodeError.message);
+    }
+    
     return res.status(401).json({ 
       success: false, 
-      message: 'Invalid or expired token' 
+      message: 'Invalid or expired token',
+      debug: {
+        error: jwtError.message,
+        tokenLength: token.length,
+        jwtSecretSet: !!JWT_SECRET
+      }
     });
   }
 }
@@ -396,6 +416,10 @@ app.post('/api/admin/login', (req, res) => {
     }
     
     // Generate JWT token
+    console.log('=== JWT TOKEN GENERATION ===');
+    console.log('JWT_SECRET used for signing:', JWT_SECRET ? 'set' : 'not set');
+    console.log('JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
+    
     const token = jwt.sign(
       { 
         id: user.id, 
@@ -405,6 +429,10 @@ app.post('/api/admin/login', (req, res) => {
       JWT_SECRET,
       { expiresIn: '24h' }
     );
+    
+    console.log('✅ JWT token generated successfully');
+    console.log('Token length:', token.length);
+    console.log('Token preview:', token.substring(0, 50) + '...');
     
     console.log('✅ Login successful for user:', username);
     res.json({ 
