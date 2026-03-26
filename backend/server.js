@@ -24,10 +24,10 @@ app.use(session({
   saveUninitialized: false,
   name: 'ash-admin-session',
   cookie: { 
-    secure: isHttps, // Use secure cookies in production (HTTPS)
+    secure: false, // Temporarily disable to test
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
-    sameSite: isProduction ? 'lax' : 'lax' // Use 'lax' for both environments for now
+    sameSite: 'lax' // Use 'lax' for both environments
   }
 }));
 
@@ -40,7 +40,17 @@ const allowedOrigins = [
 
 app.use(cors({
   credentials: true,
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or same-origin)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -274,6 +284,18 @@ app.get('/api/health', (req, res) => {
     status: 'OK', 
     timestamp: new Date().toISOString(),
     session: req.session 
+  });
+});
+
+// Simple test endpoint without auth
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    message: 'API is working',
+    timestamp: new Date().toISOString(),
+    headers: {
+      cookie: req.headers.cookie ? 'present' : 'missing',
+      origin: req.headers.origin || 'same-origin'
+    }
   });
 });
 
