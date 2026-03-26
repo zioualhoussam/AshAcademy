@@ -14,6 +14,15 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 // Environment detection
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Log environment variables on startup
+console.log('=== ENVIRONMENT VARIABLES ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('PORT:', process.env.PORT);
+console.log('ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD);
+console.log('HTTPS:', process.env.HTTPS);
+console.log('SESSION_SECRET:', process.env.SESSION_SECRET ? 'SET' : 'NOT SET');
+console.log('=============================');
+
 // Simple CORS configuration
 app.use(cors({
   origin: true, // Allow all origins for simplicity
