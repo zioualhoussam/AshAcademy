@@ -5,6 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -12,6 +13,9 @@ const PORT = process.env.PORT || 5000;
 // Environment detection
 const isProduction = process.env.NODE_ENV === 'production';
 const isHttps = process.env.HTTPS === 'true' || isProduction;
+
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'ash-jwt-secret-key';
 
 // Session middleware MUST come first
 app.use(session({
@@ -306,28 +310,47 @@ app.get('/api/admin/test', (req, res) => {
   });
 });
 
-// Admin Authentication Middleware
+// Admin Authentication Middleware - Supports both Session and JWT
 function requireAuth(req, res, next) {
   console.log('=== AUTH MIDDLEWARE ===');
   console.log('Session ID:', req.sessionID);
   console.log('Session data:', req.session);
   console.log('Origin:', req.headers.origin);
+  console.log('Authorization header:', req.headers.authorization);
   
+  // Check session first
   if (req.session && req.session.authenticated) {
-    console.log('✅ Authenticated user, proceeding...');
+    console.log('✅ Authenticated via session, proceeding...');
     return next();
   }
   
-  console.log('❌ Auth failed - no valid session');
+  // Check JWT token as fallback
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      console.log('✅ Authenticated via JWT, proceeding...');
+      req.user = decoded.user; // Attach user to request
+      return next();
+    } catch (jwtError) {
+      console.log('❌ JWT verification failed:', jwtError.message);
+    }
+  }
+  
+  console.log('❌ Auth failed - no valid session or JWT');
   console.log('Session exists:', !!req.session);
   console.log('Session authenticated:', req.session?.authenticated);
+  console.log('Has Authorization header:', !!authHeader);
+  
   res.status(401).json({ 
     success: false, 
     message: 'Authentication required',
     debug: {
       hasSession: !!req.session,
       sessionId: req.sessionID,
-      isAuthenticated: req.session?.authenticated
+      isAuthenticated: req.session?.authenticated,
+      hasAuthHeader: !!authHeader
     }
   });
 }
@@ -357,14 +380,32 @@ app.post('/api/admin/login', (req, res) => {
     req.session.user = { id: user.id, username: user.username };
     console.log('Session set:', req.session);
     
+    // Create JWT token as fallback
+    const token = jwt.sign(
+      { user: { id: user.id, username: user.username } },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
     // Save session before responding
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
-        return res.status(500).json({ success: false, message: 'Session error' });
+        // Fallback to JWT only if session fails
+        return res.json({ 
+          success: true, 
+          message: 'Login successful (JWT only)',
+          token: token,
+          user: { id: user.id, username: user.username }
+        });
       }
       console.log('Session saved successfully');
-      res.json({ success: true, message: 'Login successful' });
+      res.json({ 
+        success: true, 
+        message: 'Login successful',
+        token: token, // Include JWT as fallback
+        user: { id: user.id, username: user.username }
+      });
     });
   });
 });

@@ -52,6 +52,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (data.success) {
+            // Store JWT token if provided (for fallback authentication)
+            if (data.token) {
+                localStorage.setItem('adminToken', data.token);
+                localStorage.setItem('adminUser', JSON.stringify(data.user));
+            }
             showToast('Login successful! Welcome back.', 'success');
             showDashboard();
         } else {
@@ -74,6 +79,10 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
             credentials: 'include'
         });
         
+        // Clear JWT token from localStorage
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        
         showToast('Logout successful', 'success');
         showLogin();
         document.getElementById('loginForm').reset();
@@ -94,6 +103,8 @@ function setupEventListeners() {
 async function checkAuth() {
     try {
         console.log('Checking authentication...');
+        
+        // First try with session-based auth
         const response = await fetch('/api/admin/stats', {
             credentials: 'include'
         });
@@ -101,28 +112,84 @@ async function checkAuth() {
         console.log('Auth check response status:', response.status);
         
         if (response.ok) {
-            console.log('User is authenticated, showing dashboard');
+            console.log('User is authenticated via session, showing dashboard');
             showDashboard();
-        } else if (response.status === 401) {
-            console.log('User not authenticated, showing login');
-            showLogin();
-        } else {
-            console.error('Unexpected auth check response:', response.status);
-            showLogin();
+            return;
         }
+        
+        // If session auth fails, try JWT fallback
+        if (response.status === 401) {
+            console.log('Session auth failed, trying JWT fallback...');
+            const token = localStorage.getItem('adminToken');
+            
+            if (token) {
+                console.log('Found JWT token, trying with Bearer token...');
+                const jwtResponse = await fetch('/api/admin/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                console.log('JWT auth check response status:', jwtResponse.status);
+                
+                if (jwtResponse.ok) {
+                    console.log('User is authenticated via JWT, showing dashboard');
+                    showDashboard();
+                    return;
+                } else {
+                    console.log('JWT auth also failed, clearing stored token');
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                }
+            }
+        }
+        
+        console.log('User not authenticated, showing login');
+        showLogin();
+        
     } catch (error) {
         console.error('Auth check failed:', error);
         showLogin();
     }
 }
 
+// ─── Helper for Authenticated API Calls ─────────────────────────
+async function authenticatedFetch(url, options = {}) {
+    // Try session-based auth first
+    let response = await fetch(url, {
+        credentials: 'include',
+        ...options
+    });
+    
+    // If session fails, try JWT fallback
+    if (!response.ok && response.status === 401) {
+        const token = localStorage.getItem('adminToken');
+        if (token) {
+            response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    ...options.headers
+                },
+                ...options
+            });
+            
+            // If JWT also fails, clear the stored token
+            if (!response.ok && response.status === 401) {
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                showLogin();
+            }
+        }
+    }
+    
+    return response;
+}
+
 // ─── Dashboard Data Loading ───────────────────────────────────
 async function loadDashboardData() {
     console.log('Loading dashboard data...');
     try {
-        const response = await fetch('/api/admin/stats', {
-            credentials: 'include'
-        });
+        const response = await authenticatedFetch('/api/admin/stats');
         
         console.log('Stats response status:', response.status);
         
@@ -169,9 +236,7 @@ function animateValue(id, start, end, duration) {
 async function loadEnrollments() {
     console.log('Loading enrollments...');
     try {
-        const response = await fetch('/api/admin/enrollments', {
-            credentials: 'include'
-        });
+        const response = await authenticatedFetch('/api/admin/enrollments');
         
         console.log('Enrollments response status:', response.status);
         
@@ -197,13 +262,15 @@ async function loadEnrollments() {
                     </div>
                 `).join('');
             } else {
-                enrollmentsList.innerHTML = '<p style="text-align: center; color: var(--gray); padding: 2rem;">No enrollments found</p>';
+                enrollmentsList.innerHTML = '<p style="text-align: center; color: #666;">No enrollments found.</p>';
             }
         } else {
             console.error('Enrollments response not ok:', response.status);
+            document.getElementById('enrollmentsList').innerHTML = '<p style="text-align: center; color: #dc3545;">Error loading enrollments.</p>';
         }
     } catch (error) {
         console.error('Error loading enrollments:', error);
+        document.getElementById('enrollmentsList').innerHTML = '<p style="text-align: center; color: #dc3545;">Error loading enrollments.</p>';
     }
 }
 
@@ -211,9 +278,7 @@ async function loadEnrollments() {
 async function loadContacts() {
     console.log('Loading contacts...');
     try {
-        const response = await fetch('/api/admin/contacts', {
-            credentials: 'include'
-        });
+        const response = await authenticatedFetch('/api/admin/contacts');
         
         console.log('Contacts response status:', response.status);
         
@@ -245,12 +310,11 @@ async function loadContacts() {
 // ─── Update Enrollment Status ───────────────────────────────────
 async function updateStatus(id, status) {
     try {
-        const response = await fetch(`/api/admin/enrollments/${id}/status`, {
+        const response = await authenticatedFetch(`/api/admin/enrollments/${id}/status`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
-            credentials: 'include',
             body: JSON.stringify({ status })
         });
         
@@ -278,9 +342,7 @@ window.addEventListener('scroll', () => {
 // ─── Initialize on Load ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is already logged in
-    fetch('/api/admin/stats', {
-        credentials: 'include'
-    })
+    authenticatedFetch('/api/admin/stats')
     .then(response => {
         if (response.ok) {
             showDashboard();
@@ -288,7 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showLogin();
         }
     })
-    .catch(() => {
+    .catch(error => {
+        console.error('Initial auth check failed:', error);
         showLogin();
     });
 });
