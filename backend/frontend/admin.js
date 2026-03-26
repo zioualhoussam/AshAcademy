@@ -132,7 +132,17 @@ async function checkAuth() {
 async function authenticatedFetch(url, options = {}) {
     const token = localStorage.getItem('adminToken');
     
+    console.log('=== AUTHENTICATED FETCH DEBUG ===');
+    console.log('URL:', url);
+    console.log('Method:', options.method || 'GET');
+    console.log('Token from localStorage:', token);
+    console.log('Headers being sent:', {
+        'Authorization': token ? `Bearer ${token}` : 'MISSING',
+        ...options.headers
+    });
+    
     if (!token) {
+        console.log('❌ No token found, showing login');
         showLogin();
         throw new Error('No authentication token');
     }
@@ -145,7 +155,10 @@ async function authenticatedFetch(url, options = {}) {
         ...options
     });
     
+    console.log('Response status:', response.status);
+    
     if (response.status === 401) {
+        console.log('❌ 401 response, clearing token and showing login');
         localStorage.removeItem('adminToken');
         showLogin();
         throw new Error('Authentication failed');
