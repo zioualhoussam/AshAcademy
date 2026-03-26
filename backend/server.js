@@ -37,7 +37,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'frontend')));
 
 // Database setup
-const db = new sqlite3.Database('./ash_database.db', (err) => {
+const db = new sqlite3.Database('./data/ash_database.db', (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
   } else {
