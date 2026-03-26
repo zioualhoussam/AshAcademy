@@ -1,317 +1,500 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - ASH Educational Center</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
-        }
-        
-        .auth-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        
-        .login-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .login-header h1 {
-            color: #333;
-            margin-bottom: 0.5rem;
-        }
-        
-        .login-header p {
-            color: #666;
-            font-size: 0.9rem;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: #333;
-        }
-        
-        .form-group input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .login-btn {
-            width: 100%;
-            padding: 0.75rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .login-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .dashboard {
-            min-height: 100vh;
-            background-color: #f5f5f5;
-            display: none;
-        }
-        
-        .dashboard-header {
-            background: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .dashboard-header h1 {
-            color: #333;
-        }
-        
-        .logout-btn {
-            padding: 0.5rem 1rem;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        
-        .logout-btn:hover {
-            background: #c82333;
-        }
-        
-        .dashboard-content {
-            padding: 2rem;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        
-        .stat-card h3 {
-            color: #666;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-        
-        .stat-card p {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        .enrollments-section {
-            background: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .enrollments-section h2 {
-            margin-bottom: 1.5rem;
-            color: #333;
-        }
-        
-        .enrollment-item {
-            padding: 1rem;
-            border: 1px solid #eee;
-            border-radius: 5px;
-            margin-bottom: 1rem;
-        }
-        
-        .enrollment-item h4 {
-            margin-bottom: 0.5rem;
-            color: #333;
-        }
-        
-        .enrollment-item p {
-            margin-bottom: 0.25rem;
-            color: #666;
-        }
-        
-        .status {
-            padding: 0.25rem 0.5rem;
-            border-radius: 3px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        
-        .status.pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .status.approved {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .status.rejected {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .actions {
-            margin-top: 1rem;
-        }
-        
-        .approve-btn, .reject-btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            margin-right: 0.5rem;
-            font-size: 0.8rem;
-        }
-        
-        .approve-btn {
-            background: #28a745;
-            color: white;
-        }
-        
-        .reject-btn {
-            background: #dc3545;
-            color: white;
-        }
-        
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: 5px;
-            color: white;
-            font-weight: 500;
-            z-index: 1000;
-            display: none;
-        }
-        
-        .toast.success {
-            background: #28a745;
-        }
-        
-        .toast.error {
-            background: #dc3545;
-        }
-        
-        .toast.info {
-            background: #17a2b8;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin Dashboard - ASH Educational Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="forms.css"/>
+<style>
+  :root {
+    --navy: #1a2f55;
+    --blue: #1e3a6e;
+    --sky: #2d6bb5;
+    --accent: #c4973a;
+    --gold: #b8892e;
+    --cream: #faf8f4;
+    --white: #ffffff;
+    --gray: #6b7a90;
+    --light: #eef3fb;
+    --card-shadow: 0 8px 40px rgba(13,35,64,0.10);
+    --radius: 18px;
+    --transition: 0.32s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--navy);
+    overflow-x: hidden;
+  }
+
+  /* ─── ADMIN NAVBAR ─── */
+  .admin-navbar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5vw;
+    height: 72px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(18px);
+    border-bottom: 1.5px solid rgba(13,35,64,0.07);
+    transition: box-shadow var(--transition);
+  }
+  .admin-navbar.scrolled { box-shadow: 0 4px 32px rgba(13,35,64,0.12); }
+
+  .admin-logo {
+    display: flex; align-items: center; gap: 12px;
+    text-decoration: none;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.7rem;
+    font-weight: 900;
+    color: var(--navy);
+    letter-spacing: -0.5px;
+  }
+  .admin-logo-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--blue), var(--sky));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem; font-weight: 900;
+    box-shadow: 0 4px 16px rgba(46,125,209,0.35);
+    flex-shrink: 0;
+  }
+  .admin-logo span { color: var(--accent); }
+
+  .admin-nav-actions {
+    display: flex; align-items: center; gap: 1rem;
+  }
+
+  .logout-btn {
+    background: var(--blue);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all var(--transition);
+    box-shadow: 0 4px 16px rgba(26,74,138,0.3);
+  }
+  .logout-btn:hover { 
+    background: var(--navy);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(26,74,138,0.4);
+  }
+
+  /* ─── AUTH CONTAINER ─── */
+  .auth-container {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 60%, var(--sky) 100%);
+    position: relative; overflow: hidden;
+  }
+  .auth-container::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10S0 25.523 0 20s4.477-10 10-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .auth-blob {
+    position: absolute; right: -80px; top: -80px;
+    width: 600px; height: 600px; border-radius: 50%;
+    background: rgba(245,166,35,0.12);
+    filter: blur(80px);
+    pointer-events: none;
+  }
+  .auth-blob2 {
+    position: absolute; left: -100px; bottom: -100px;
+    width: 500px; height: 500px; border-radius: 50%;
+    background: rgba(46,125,209,0.18);
+    filter: blur(100px);
+    pointer-events: none;
+  }
+
+  .login-card {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 3rem;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: 0 24px 80px rgba(13,35,64,0.3);
+    position: relative; z-index: 1;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .login-header {
+    text-align: center; margin-bottom: 2rem;
+  }
+  .login-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem; font-weight: 700; color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
+  .login-header p {
+    color: var(--gray); font-size: 0.95rem;
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group label {
+    display: block; margin-bottom: 0.5rem;
+    font-weight: 500; color: var(--navy);
+    font-size: 0.9rem;
+  }
+  
+  .form-group input {
+    width: 100%;
+    padding: 0.875rem 1.25rem;
+    border: 2px solid var(--light);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    transition: all var(--transition);
+    background: white;
+  }
+  
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--sky);
+    box-shadow: 0 0 0 3px rgba(45, 107, 181, 0.1);
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--blue), var(--sky));
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    box-shadow: 0 6px 24px rgba(26,74,138,0.3);
+  }
+  
+  .login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(26,74,138,0.4);
+  }
+
+  /* ─── ADMIN DASHBOARD ─── */
+  .admin-dashboard {
+    min-height: 100vh;
+    padding-top: 72px;
+    display: none;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .admin-hero {
+    min-height: 60vh;
+    display: flex; align-items: center;
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 60%, var(--sky) 100%);
+    padding: 4rem 5vw;
+  }
+  .admin-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M50 50c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10c0 5.523-4.477 10-10 10S0 25.523 0 20s4.477-10 10-10z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .admin-hero-blob {
+    position: absolute; right: -80px; top: -80px;
+    width: 600px; height: 600px; border-radius: 50%;
+    background: rgba(245,166,35,0.12);
+    filter: blur(80px);
+    pointer-events: none;
+  }
+  .admin-hero-blob2 {
+    position: absolute; left: -100px; bottom: -100px;
+    width: 500px; height: 500px; border-radius: 50%;
+    background: rgba(46,125,209,0.18);
+    filter: blur(100px);
+    pointer-events: none;
+  }
+  .admin-hero-content { position: relative; z-index: 1; max-width: 800px; }
+  .admin-hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-weight: 900; color: white;
+    line-height: 1.1; margin-bottom: 1.5rem;
+    letter-spacing: -1px;
+  }
+  .admin-hero h1 em { color: var(--accent); font-style: normal; }
+  .admin-hero p {
+    font-size: 1.15rem; color: rgba(255,255,255,0.78);
+    margin-bottom: 2rem; font-weight: 300; line-height: 1.7;
+  }
+
+  /* ─── STATS GRID ─── */
+  .admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    padding: 4rem 5vw 2rem;
+  }
+
+  .stat-card {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+    transition: all var(--transition);
+    position: relative; overflow: hidden;
+    animation: fadeUp 0.6s ease both;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+  }
+  .stat-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 16px 60px rgba(13,35,64,0.15);
+  }
+  .stat-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.9rem; color: var(--gray);
+    margin-bottom: 0.5rem; font-weight: 600;
+  }
+  .stat-card .stat-number {
+    font-size: 2.5rem; font-weight: 900; color: var(--navy);
+    font-family: 'Playfair Display', serif;
+    line-height: 1;
+  }
+  .stat-card .stat-number span { color: var(--accent); }
+
+  /* ─── DATA SECTIONS ─── */
+  .admin-content {
+    padding: 2rem 5vw 4rem;
+  }
+
+  .admin-section {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+    animation: fadeUp 0.8s ease both;
+  }
+  .admin-section h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem; color: var(--navy);
+    margin-bottom: 2rem; font-weight: 700;
+  }
+
+  .enrollment-item, .contact-item {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 20px rgba(13,35,64,0.08);
+    transition: all var(--transition);
+    border-left: 4px solid transparent;
+  }
+  .enrollment-item:hover, .contact-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(13,35,64,0.12);
+    border-left-color: var(--accent);
+  }
+  .enrollment-item h4, .contact-item h4 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem; color: var(--navy);
+    margin-bottom: 0.5rem; font-weight: 600;
+  }
+  .enrollment-item p, .contact-item p {
+    color: var(--gray); margin-bottom: 0.25rem;
+    font-size: 0.95rem;
+  }
+  .contact-item .message {
+    font-style: italic; color: var(--blue);
+    margin-top: 0.5rem; padding-top: 0.5rem;
+    border-top: 1px solid var(--light);
+  }
+
+  .status {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem; font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .status.pending {
+    background: rgba(245,166,35,0.1);
+    color: var(--accent);
+  }
+  .status.approved {
+    background: rgba(16,185,129,0.1);
+    color: #10b981;
+  }
+  .status.rejected {
+    background: rgba(239,68,68,0.1);
+    color: #ef4444;
+  }
+
+  .actions {
+    display: flex; gap: 0.75rem; margin-top: 1rem;
+  }
+  .approve-btn, .reject-btn {
+    padding: 0.5rem 1rem;
+    border: none; border-radius: 8px;
+    font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; transition: all var(--transition);
+  }
+  .approve-btn {
+    background: rgba(16,185,129,0.1);
+    color: #10b981;
+  }
+  .approve-btn:hover {
+    background: #10b981; color: white;
+    transform: translateY(-1px);
+  }
+  .reject-btn {
+    background: rgba(239,68,68,0.1);
+    color: #ef4444;
+  }
+  .reject-btn:hover {
+    background: #ef4444; color: white;
+    transform: translateY(-1px);
+  }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .stat-number {
+    animation: countUp 0.6s ease both;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    .admin-navbar { padding: 0 3vw; }
+    .admin-logo { font-size: 1.4rem; }
+    .admin-hero { padding: 3rem 3vw; }
+    .admin-stats-grid { padding: 3rem 3vw 1rem; gap: 1.5rem; }
+    .admin-content { padding: 1.5rem 3vw 3rem; }
+    .admin-section { padding: 2rem; }
+    .login-card { padding: 2rem; }
+    .actions { flex-direction: column; }
+  }
+</style>
 </head>
 <body>
-    <div id="app">
-        <!-- Login Form -->
-        <div id="loginForm" class="auth-container">
-            <div class="login-card">
-                <div class="login-header">
-                    <h1>Admin Login</h1>
-                    <p>ASH Educational Center</p>
-                </div>
-                <form id="loginFormElement">
-                    <div class="form-group">
-                        <label for="username">Username</label>
-                        <input type="text" id="username" name="username" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-                    <button type="submit" class="login-btn">Login</button>
-                </form>
-            </div>
-        </div>
 
-        <!-- Dashboard -->
-        <div id="dashboard" class="dashboard">
-            <div class="dashboard-header">
-                <h1>Admin Dashboard</h1>
-                <button id="logoutBtn" class="logout-btn">Logout</button>
-            </div>
-            
-            <div class="dashboard-content">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Total Enrollments</h3>
-                        <p id="totalEnrollments">-</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Pending</h3>
-                        <p id="pendingEnrollments">-</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Approved</h3>
-                        <p id="approvedEnrollments">-</p>
-                    </div>
-                </div>
-
-                <div class="enrollments-section">
-                    <h2>Recent Enrollments</h2>
-                    <div id="enrollmentsList"></div>
-                </div>
-            </div>
-        </div>
+<!-- Authentication Container -->
+<div id="authContainer" class="auth-container">
+  <div class="auth-blob"></div>
+  <div class="auth-blob2"></div>
+  
+  <div class="login-card">
+    <div class="login-header">
+      <h2>Admin Login</h2>
+      <p>Access your ASH Educational dashboard</p>
     </div>
+    
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required placeholder="Enter your username">
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required placeholder="Enter your password">
+      </div>
+      
+      <button type="submit" class="login-btn">Sign In to Dashboard</button>
+    </form>
+  </div>
+</div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
+<!-- Admin Dashboard -->
+<div id="adminDashboard" class="admin-dashboard">
+  <!-- Admin Navbar -->
+  <nav class="admin-navbar">
+    <a href="#" class="admin-logo">
+      <div class="admin-logo-icon">A</div>
+      <span>ASH <em>Admin</em></span>
+    </a>
+    
+    <div class="admin-nav-actions">
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </div>
+  </nav>
 
-    <script src="admin.js"></script>
+  <!-- Admin Hero Section -->
+  <section class="admin-hero">
+    <div class="admin-hero-blob"></div>
+    <div class="admin-hero-blob2"></div>
+    
+    <div class="admin-hero-content">
+      <h1>Welcome to <em>ASH Admin</em></h1>
+      <p>Manage enrollments, contact messages, and monitor your educational center's performance with our comprehensive admin dashboard.</p>
+    </div>
+  </section>
+
+  <!-- Stats Grid -->
+  <section class="admin-stats-grid">
+    <div class="stat-card">
+      <h3>Total Enrollments</h3>
+      <div class="stat-number" id="totalEnrollments">-</div>
+    </div>
+    
+    <div class="stat-card">
+      <h3>Pending Applications</h3>
+      <div class="stat-number" id="pendingEnrollments">-</div>
+    </div>
+    
+    <div class="stat-card">
+      <h3>Approved Students</h3>
+      <div class="stat-number" id="approvedEnrollments">-</div>
+    </div>
+    
+    <div class="stat-card">
+      <h3>Contact Messages</h3>
+      <div class="stat-number" id="totalContacts">-</div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main class="admin-content">
+    <!-- Enrollments Section -->
+    <section class="admin-section">
+      <h2>Recent Enrollments</h2>
+      <div id="enrollmentsList"></div>
+    </section>
+
+    <!-- Contacts Section -->
+    <section class="admin-section">
+      <h2>Contact Messages</h2>
+      <div id="contactsList"></div>
+    </section>
+  </main>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast" class="toast"></div>
+
+<script src="admin.js"></script>
 </body>
 </html>
