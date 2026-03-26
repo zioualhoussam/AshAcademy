@@ -14,7 +14,6 @@ const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin123';
 
 console.log('🚀 ASH Educational Backend Starting...');
-console.log('📝 Admin Credentials:', ADMIN_USERNAME + '/' + ADMIN_PASSWORD);
 
 // Session middleware - simple and reliable
 app.use(session({
@@ -260,15 +259,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Simple test endpoint
-app.get('/api/test', (req, res) => {
-  res.json({ 
-    message: 'API is working',
-    timestamp: new Date().toISOString(),
-    session: req.session ? 'active' : 'none'
-  });
-});
-
 // Simple Authentication Middleware - Session based
 function requireAuth(req, res, next) {
   if (req.session && req.session.authenticated) {
@@ -297,7 +287,6 @@ app.post('/api/admin/login', (req, res) => {
     req.session.authenticated = true;
     req.session.username = username;
     
-    console.log('✅ Login successful for user:', username);
     res.json({ 
       success: true, 
       message: 'Login successful',
@@ -306,7 +295,6 @@ app.post('/api/admin/login', (req, res) => {
       }
     });
   } else {
-    console.log('❌ Invalid credentials for user:', username);
     res.status(401).json({ 
       success: false, 
       message: 'Invalid username or password' 
@@ -318,7 +306,6 @@ app.post('/api/admin/login', (req, res) => {
 app.post('/api/admin/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
-      console.error('Logout error:', err);
       return res.status(500).json({ success: false, message: 'Logout failed' });
     }
     res.json({ success: true, message: 'Logout successful' });

@@ -1,20 +1,15 @@
 // Admin Dashboard JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is already logged in (session-based)
-    console.log('Checking session on page load...');
-    
     authenticatedFetch('/api/admin/stats')
     .then(response => {
         if (response.ok) {
-            console.log('Session is valid, showing dashboard');
             showDashboard();
         } else {
-            console.log('No valid session, showing login');
             showLogin();
         }
     })
     .catch(error => {
-        console.error('Initial auth check failed:', error);
         showLogin();
     });
     
@@ -69,8 +64,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (data.success) {
-            console.log('Login successful, session established');
-            console.log('User info:', data.user);
             
             showToast('Login successful! Welcome back.', 'success');
             showDashboard();
@@ -78,7 +71,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             showToast(data.message || 'Invalid credentials. Please try again.', 'error');
         }
     } catch (error) {
-        console.error('Login error:', error);
         showToast('Login error. Please try again.', 'error');
     } finally {
         submitBtn.textContent = originalText;
@@ -98,7 +90,6 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
         showLogin();
         document.getElementById('loginForm').reset();
     } catch (error) {
-        console.error('Logout error:', error);
         showToast('Logout error', 'error');
     }
 });
@@ -113,45 +104,30 @@ function setupEventListeners() {
 
 async function checkAuth() {
     try {
-        console.log('Checking authentication...');
-        
         // Test if session is valid
         const response = await fetch('/api/admin/stats', {
             credentials: 'include'
         });
         
-        console.log('Auth check response status:', response.status);
-        
         if (response.ok) {
-            console.log('Session is valid, showing dashboard');
             showDashboard();
         } else {
-            console.log('Session invalid, showing login');
             showLogin();
         }
         
     } catch (error) {
-        console.error('Auth check failed:', error);
         showLogin();
     }
 }
 
 // ─── Helper for Authenticated API Calls ─────────────────────────
 async function authenticatedFetch(url, options = {}) {
-    console.log('=== AUTHENTICATED FETCH DEBUG ===');
-    console.log('URL:', url);
-    console.log('Method:', options.method || 'GET');
-    console.log('Using session-based authentication');
-    
     const response = await fetch(url, {
         credentials: 'include', // Important for session cookies
         ...options
     });
     
-    console.log('Response status:', response.status);
-    
     if (response.status === 401) {
-        console.log('❌ 401 response, showing login');
         showLogin();
         throw new Error('Authentication failed');
     }
@@ -161,15 +137,11 @@ async function authenticatedFetch(url, options = {}) {
 
 // ─── Dashboard Data Loading ───────────────────────────────────
 async function loadDashboardData() {
-    console.log('Loading dashboard data...');
     try {
         const response = await authenticatedFetch('/api/admin/stats');
         
-        console.log('Stats response status:', response.status);
-        
         if (response.ok) {
             const data = await response.json();
-            console.log('Stats data:', data);
             
             // Animate stat numbers
             animateValue('totalEnrollments', 0, data.total || 0, 1500);
@@ -177,14 +149,12 @@ async function loadDashboardData() {
             animateValue('approvedEnrollments', 0, data.approved || 0, 1500);
             animateValue('totalContacts', 0, data.contacts || 0, 1500);
         } else {
-            console.error('Stats response not ok:', response.status);
         }
         
         // Load enrollments and contacts
         loadEnrollments();
         loadContacts();
     } catch (error) {
-        console.error('Error loading dashboard data:', error);
     }
 }
 
@@ -208,15 +178,11 @@ function animateValue(id, start, end, duration) {
 
 // ─── Load Enrollments ─────────────────────────────────────────
 async function loadEnrollments() {
-    console.log('Loading enrollments...');
     try {
         const response = await authenticatedFetch('/api/admin/enrollments');
         
-        console.log('Enrollments response status:', response.status);
-        
         if (response.ok) {
             const data = await response.json();
-            console.log('Enrollments data:', data);
             const enrollmentsList = document.getElementById('enrollmentsList');
             
             if (data.data && data.data.length > 0) {
@@ -239,26 +205,20 @@ async function loadEnrollments() {
                 enrollmentsList.innerHTML = '<p style="text-align: center; color: #666;">No enrollments found.</p>';
             }
         } else {
-            console.error('Enrollments response not ok:', response.status);
             document.getElementById('enrollmentsList').innerHTML = '<p style="text-align: center; color: #dc3545;">Error loading enrollments.</p>';
         }
     } catch (error) {
-        console.error('Error loading enrollments:', error);
         document.getElementById('enrollmentsList').innerHTML = '<p style="text-align: center; color: #dc3545;">Error loading enrollments.</p>';
     }
 }
 
 // ─── Load Contacts ───────────────────────────────────────────
 async function loadContacts() {
-    console.log('Loading contacts...');
     try {
         const response = await authenticatedFetch('/api/admin/contacts');
         
-        console.log('Contacts response status:', response.status);
-        
         if (response.ok) {
             const data = await response.json();
-            console.log('Contacts data:', data);
             const contactsList = document.getElementById('contactsList');
             
             if (data.data && data.data.length > 0) {
@@ -274,17 +234,14 @@ async function loadContacts() {
                 contactsList.innerHTML = '<p style="text-align: center; color: var(--gray); padding: 2rem;">No contact messages found</p>';
             }
         } else {
-            console.error('Contacts response not ok:', response.status);
         }
     } catch (error) {
-        console.error('Error loading contacts:', error);
     }
 }
 
 // ─── Update Enrollment Status ───────────────────────────────────
 async function updateStatus(id, status) {
     try {
-        console.log('Updating enrollment status:', id, 'to', status);
         
         const response = await authenticatedFetch(`/api/admin/enrollments/${id}/status`, {
             method: 'PUT',
@@ -302,7 +259,6 @@ async function updateStatus(id, status) {
             showToast('Error updating status', 'error');
         }
     } catch (error) {
-        console.error('Error updating status:', error);
         showToast('Error updating status', 'error');
     }
 }
