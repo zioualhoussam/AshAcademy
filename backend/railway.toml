@@ -9,3 +9,5 @@ restartPolicyMaxRetries = 2
 [env]
 NODE_ENV = "production"
 PORT = "8080"
+HTTPS = "true"
+SESSION_SECRET = "ash-educational-production-secret-key-2024"

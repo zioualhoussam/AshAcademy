@@ -9,24 +9,36 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Environment detection
+const isProduction = process.env.NODE_ENV === 'production';
+const isHttps = process.env.HTTPS === 'true' || isProduction;
+
 // Session middleware MUST come first
 app.use(session({
-  secret: 'ash-educational-secret-key',
+  secret: process.env.SESSION_SECRET || 'ash-educational-secret-key',
   resave: false,
   saveUninitialized: false,
   name: 'ash-admin-session',
   cookie: { 
-    secure: false, 
+    secure: isHttps, // Use secure cookies in production (HTTPS)
     maxAge: 24 * 60 * 60 * 1000,
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: isProduction ? 'none' : 'lax' // Use 'none' for cross-site in production
   }
 }));
 
-// Then CORS
+// Then CORS - Updated for production
+const allowedOrigins = [
+  'http://localhost:5000', 
+  'http://127.0.0.1:5000',
+  'https://ash-educational-center-production.up.railway.app'
+];
+
 app.use(cors({
   credentials: true,
-  origin: ['http://localhost:5000', 'http://127.0.0.1:5000']
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Then body parsers
@@ -263,22 +275,46 @@ app.get('/api/health', (req, res) => {
 
 // Test endpoint for debugging
 app.get('/api/admin/test', (req, res) => {
-  console.log('Test endpoint - session:', req.session);
-  console.log('Test endpoint - cookies:', req.headers.cookie);
+  console.log('=== AUTH DEBUG INFO ===');
+  console.log('Environment:', { NODE_ENV: process.env.NODE_ENV, isProduction, isHttps });
+  console.log('Session ID:', req.sessionID);
+  console.log('Session data:', req.session);
+  console.log('Cookies:', req.headers.cookie);
+  console.log('Origin:', req.headers.origin);
+  console.log('User-Agent:', req.headers['user-agent']);
   res.json({ 
+    environment: { NODE_ENV: process.env.NODE_ENV, isProduction, isHttps },
+    sessionId: req.sessionID,
     session: req.session,
-    cookies: req.headers.cookie 
+    cookies: req.headers.cookie,
+    origin: req.headers.origin
   });
 });
 
 // Admin Authentication Middleware
 function requireAuth(req, res, next) {
-  console.log('Auth check - session:', req.session);
+  console.log('=== AUTH MIDDLEWARE ===');
+  console.log('Session ID:', req.sessionID);
+  console.log('Session data:', req.session);
+  console.log('Origin:', req.headers.origin);
+  
   if (req.session && req.session.authenticated) {
+    console.log('✅ Authenticated user, proceeding...');
     return next();
   }
-  console.log('Auth failed - no valid session');
-  res.status(401).json({ success: false, message: 'Authentication required' });
+  
+  console.log('❌ Auth failed - no valid session');
+  console.log('Session exists:', !!req.session);
+  console.log('Session authenticated:', req.session?.authenticated);
+  res.status(401).json({ 
+    success: false, 
+    message: 'Authentication required',
+    debug: {
+      hasSession: !!req.session,
+      sessionId: req.sessionID,
+      isAuthenticated: req.session?.authenticated
+    }
+  });
 }
 
 // Admin login endpoint
