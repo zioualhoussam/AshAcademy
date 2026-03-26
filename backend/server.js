@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
 
 const app = express();
@@ -26,12 +27,20 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Static files LAST
 app.use(express.static(path.join(__dirname, 'frontend')));
 
+// Ensure data directory exists
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+  console.log('Created data directory:', dataDir);
+}
+
 // Database setup
-const db = new sqlite3.Database('./data/ash_database.db', (err) => {
+const dbPath = path.join(dataDir, 'ash_database.db');
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
   } else {
-    console.log('Connected to SQLite database');
+    console.log('Connected to SQLite database at:', dbPath);
     initializeTables();
   }
 });
