@@ -51,6 +51,7 @@ function showDashboard() {
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
+    const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     
     const submitBtn = e.target.querySelector('.login-btn');
@@ -64,23 +65,24 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ password })
+            body: JSON.stringify({ username, password })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            // Store the token with proper formatting
+            // Store the JWT token and user info
             const token = data.token ? data.token.trim() : '';
             localStorage.setItem('adminToken', token);
+            localStorage.setItem('adminUser', JSON.stringify(data.user));
             
-            console.log('Login successful, token stored:', token);
-            console.log('Token length:', token.length);
+            console.log('Login successful, token stored:', token.substring(0, 20) + '...');
+            console.log('User info:', data.user);
             
             showToast('Login successful! Welcome back.', 'success');
             showDashboard();
         } else {
-            showToast('Invalid password. Please try again.', 'error');
+            showToast(data.message || 'Invalid credentials. Please try again.', 'error');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -98,8 +100,9 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
             method: 'POST'
         });
         
-        // Clear token from localStorage
+        // Clear token and user info from localStorage
         localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
         
         showToast('Logout successful', 'success');
         showLogin();

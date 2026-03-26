@@ -4,12 +4,14 @@ const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Simple password check for admin access
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || 'ash-jwt-secret-key-2024';
 
 // Environment detection
 const isProduction = process.env.NODE_ENV === 'production';
@@ -18,9 +20,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 console.log('=== ENVIRONMENT VARIABLES ===');
 console.log('NODE_ENV:', process.env.NODE_ENV);
 console.log('PORT:', process.env.PORT);
-console.log('ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD);
-console.log('HTTPS:', process.env.HTTPS);
-console.log('SESSION_SECRET:', process.env.SESSION_SECRET ? 'SET' : 'NOT SET');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
 console.log('=============================');
 
 // Simple CORS configuration
@@ -100,7 +100,33 @@ function initializeTables() {
       console.error('Error creating admin_users table:', err);
     } else {
       console.log(' Admin users table created successfully');
-      // No longer using database authentication, so skip creating default admin user
+      
+      // Create default admin user if not exists
+      const defaultUsername = 'admin';
+      const defaultPassword = 'admin123';
+      
+      // Check if admin user exists
+      db.get('SELECT * FROM admin_users WHERE username = ?', [defaultUsername], (err, user) => {
+        if (err) {
+          console.error('Error checking admin user:', err);
+          return;
+        }
+        
+        if (!user) {
+          // Hash the password and create admin user
+          const hashedPassword = bcrypt.hashSync(defaultPassword, 10);
+          db.run('INSERT INTO admin_users (username, password) VALUES (?, ?)', 
+            [defaultUsername, hashedPassword], (err) => {
+            if (err) {
+              console.error('Error creating default admin user:', err);
+            } else {
+              console.log(` Default admin user created: ${defaultUsername}/${defaultPassword}`);
+            }
+          });
+        } else {
+          console.log(` Admin user already exists: ${defaultUsername}`);
+        }
+      });
     }
   });
 }
@@ -296,81 +322,101 @@ app.put('/api/test', (req, res) => {
   });
 });
 
-// Simple Admin Authentication Middleware
+// JWT Authentication Middleware
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   
-  console.log('=== AUTH DEBUG ===');
+  console.log('=== JWT AUTH DEBUG ===');
   console.log('Method:', req.method);
   console.log('URL:', req.url);
-  console.log('Content-Type:', req.headers['content-type']);
-  console.log('Full headers:', Object.keys(req.headers));
   console.log('Auth header:', authHeader);
-  console.log('Expected:', `Bearer ${ADMIN_PASSWORD}`);
-  console.log('ADMIN_PASSWORD:', ADMIN_PASSWORD);
-  console.log('Auth header type:', typeof authHeader);
-  console.log('Expected type:', typeof `Bearer ${ADMIN_PASSWORD}`);
-  console.log('Auth header length:', authHeader ? authHeader.length : 'null');
-  console.log('Expected length:', `Bearer ${ADMIN_PASSWORD}`.length);
   
-  // Trim whitespace and compare
-  const cleanAuthHeader = authHeader ? authHeader.trim() : '';
-  const expectedHeader = `Bearer ${ADMIN_PASSWORD}`.trim();
-  
-  console.log('Clean auth header:', cleanAuthHeader);
-  console.log('Clean expected:', expectedHeader);
-  console.log('Match:', cleanAuthHeader === expectedHeader);
-  
-  // Temporary fix: Hardcode comparison to bypass environment variable issues
-  const hardcodedExpected = 'Bearer admin123';
-  const hardcodedMatch = cleanAuthHeader === hardcodedExpected;
-  
-  console.log('=== HARDCODED CHECK ===');
-  console.log('Hardcoded expected:', hardcodedExpected);
-  console.log('Hardcoded match:', hardcodedMatch);
-  
-  if (hardcodedMatch || cleanAuthHeader === expectedHeader) {
-    console.log('✅ Authentication successful');
-    return next();
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('❌ No Authorization header or invalid format');
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Authorization header required' 
+    });
   }
   
-  console.log('❌ Authentication failed');
-  console.log('Detailed comparison:');
-  console.log('- Received:', JSON.stringify(authHeader));
-  console.log('- Expected:', JSON.stringify(`Bearer ${ADMIN_PASSWORD}`));
-  console.log('- Hardcoded Expected:', JSON.stringify(hardcodedExpected));
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
   
-  res.status(401).json({ 
-    success: false, 
-    message: 'Authentication required',
-    debug: {
-      received: authHeader,
-      expected: `Bearer ${ADMIN_PASSWORD}`,
-      hardcoded: hardcodedExpected,
-      method: req.method,
-      url: req.url,
-      envAdminPassword: process.env.ADMIN_PASSWORD,
-      usedAdminPassword: ADMIN_PASSWORD
-    }
-  });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('✅ JWT verification successful for user:', decoded.username);
+    req.user = decoded; // Attach user info to request
+    return next();
+  } catch (jwtError) {
+    console.log('❌ JWT verification failed:', jwtError.message);
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid or expired token' 
+    });
+  }
 }
 
-// Simple admin login endpoint
+// Admin login endpoint
 app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
+  console.log('=== LOGIN ATTEMPT ===');
+  console.log('Request body:', req.body);
   
-  if (password === ADMIN_PASSWORD) {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Username and password are required' 
+    });
+  }
+  
+  // Look up user in database
+  const sql = 'SELECT * FROM admin_users WHERE username = ?';
+  db.get(sql, [username], (err, user) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ success: false, message: 'Database error' });
+    }
+    
+    if (!user) {
+      console.log('User not found:', username);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid username or password' 
+      });
+    }
+    
+    // Verify password
+    const isPasswordValid = bcrypt.compareSync(password, user.password);
+    if (!isPasswordValid) {
+      console.log('Invalid password for user:', username);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid username or password' 
+      });
+    }
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        username: user.username,
+        iat: Math.floor(Date.now() / 1000)
+      },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    console.log('✅ Login successful for user:', username);
     res.json({ 
       success: true, 
       message: 'Login successful',
-      token: ADMIN_PASSWORD // Simple token for frontend
+      token: token,
+      user: {
+        id: user.id,
+        username: user.username
+      }
     });
-  } else {
-    res.status(401).json({ 
-      success: false, 
-      message: 'Invalid password' 
-    });
-  }
+  });
 });
 
 // Simple admin logout endpoint
