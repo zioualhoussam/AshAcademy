@@ -1,25 +1,22 @@
 // Admin Dashboard JavaScript
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is already logged in
-    const token = localStorage.getItem('adminToken');
-    console.log('Initial token check:', token);
+    // Check if user is already logged in (session-based)
+    console.log('Checking session on page load...');
     
-    if (token) {
-        authenticatedFetch('/api/admin/stats')
-        .then(response => {
-            if (response.ok) {
-                showDashboard();
-            } else {
-                showLogin();
-            }
-        })
-        .catch(error => {
-            console.error('Initial auth check failed:', error);
+    authenticatedFetch('/api/admin/stats')
+    .then(response => {
+        if (response.ok) {
+            console.log('Session is valid, showing dashboard');
+            showDashboard();
+        } else {
+            console.log('No valid session, showing login');
             showLogin();
-        });
-    } else {
+        }
+    })
+    .catch(error => {
+        console.error('Initial auth check failed:', error);
         showLogin();
-    }
+    });
     
     setupEventListeners();
 });
@@ -65,18 +62,14 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include', // Important for session cookies
             body: JSON.stringify({ username, password })
         });
         
         const data = await response.json();
         
         if (data.success) {
-            // Store the JWT token and user info
-            const token = data.token ? data.token.trim() : '';
-            localStorage.setItem('adminToken', token);
-            localStorage.setItem('adminUser', JSON.stringify(data.user));
-            
-            console.log('Login successful, token stored:', token.substring(0, 20) + '...');
+            console.log('Login successful, session established');
             console.log('User info:', data.user);
             
             showToast('Login successful! Welcome back.', 'success');
@@ -97,12 +90,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 document.getElementById('logoutBtn').addEventListener('click', async () => {
     try {
         await fetch('/api/admin/logout', {
-            method: 'POST'
+            method: 'POST',
+            credentials: 'include'
         });
-        
-        // Clear token and user info from localStorage
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
         
         showToast('Logout successful', 'success');
         showLogin();
@@ -124,29 +114,19 @@ function setupEventListeners() {
 async function checkAuth() {
     try {
         console.log('Checking authentication...');
-        const token = localStorage.getItem('adminToken');
         
-        if (!token) {
-            console.log('No token found, showing login');
-            showLogin();
-            return;
-        }
-        
-        // Test if token is valid
+        // Test if session is valid
         const response = await fetch('/api/admin/stats', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+            credentials: 'include'
         });
         
         console.log('Auth check response status:', response.status);
         
         if (response.ok) {
-            console.log('Token is valid, showing dashboard');
+            console.log('Session is valid, showing dashboard');
             showDashboard();
         } else {
-            console.log('Token invalid, clearing and showing login');
-            localStorage.removeItem('adminToken');
+            console.log('Session invalid, showing login');
             showLogin();
         }
         
@@ -158,47 +138,20 @@ async function checkAuth() {
 
 // ─── Helper for Authenticated API Calls ─────────────────────────
 async function authenticatedFetch(url, options = {}) {
-    const token = localStorage.getItem('adminToken');
-    
     console.log('=== AUTHENTICATED FETCH DEBUG ===');
     console.log('URL:', url);
     console.log('Method:', options.method || 'GET');
-    console.log('Token from localStorage:', token);
-    console.log('Token type:', typeof token);
-    console.log('Token length:', token ? token.length : 'null');
-    
-    if (!token) {
-        console.log('❌ No token found, showing login');
-        showLogin();
-        throw new Error('No authentication token');
-    }
-    
-    // Ensure token is trimmed and properly formatted
-    const cleanToken = token.trim();
-    const authHeader = `Bearer ${cleanToken}`;
-    
-    console.log('Clean token:', cleanToken);
-    console.log('Auth header:', authHeader);
-    console.log('Headers being sent:', {
-        'Authorization': authHeader,
-        'Content-Type': options.headers?.['Content-Type'] || 'not set',
-        ...options.headers
-    });
+    console.log('Using session-based authentication');
     
     const response = await fetch(url, {
-        headers: {
-            'Authorization': authHeader,
-            ...options.headers
-        },
+        credentials: 'include', // Important for session cookies
         ...options
     });
     
     console.log('Response status:', response.status);
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     
     if (response.status === 401) {
-        console.log('❌ 401 response, clearing token and showing login');
-        localStorage.removeItem('adminToken');
+        console.log('❌ 401 response, showing login');
         showLogin();
         throw new Error('Authentication failed');
     }
@@ -331,25 +284,8 @@ async function loadContacts() {
 // ─── Update Enrollment Status ───────────────────────────────────
 async function updateStatus(id, status) {
     try {
-        // First test the auth endpoint
-        console.log('=== TESTING AUTH ENDPOINT ===');
-        const testResponse = await authenticatedFetch('/api/test-auth', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ test: 'auth-test' })
-        });
+        console.log('Updating enrollment status:', id, 'to', status);
         
-        console.log('Test auth response status:', testResponse.status);
-        if (testResponse.ok) {
-            const testData = await testResponse.json();
-            console.log('Test auth response:', testData);
-        } else {
-            console.log('Test auth failed with status:', testResponse.status);
-        }
-        
-        // Now try the actual status update
         const response = await authenticatedFetch(`/api/admin/enrollments/${id}/status`, {
             method: 'PUT',
             headers: {

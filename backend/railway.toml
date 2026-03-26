@@ -10,4 +10,3 @@ restartPolicyMaxRetries = 2
 NODE_ENV = "production"
 PORT = "8080"
 HTTPS = "true"
-JWT_SECRET = "ash-jwt-secret-key-2024-production"

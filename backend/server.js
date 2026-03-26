@@ -4,36 +4,43 @@ const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const session = require('express-session');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || 'ash-jwt-secret-key-2024';
+// Simple admin credentials
+const ADMIN_USERNAME = 'admin';
+const ADMIN_PASSWORD = 'admin123';
 
-// Environment detection
-const isProduction = process.env.NODE_ENV === 'production';
+console.log('🚀 ASH Educational Backend Starting...');
+console.log('📝 Admin Credentials:', ADMIN_USERNAME + '/' + ADMIN_PASSWORD);
 
-// Log environment variables on startup
-console.log('=== ENVIRONMENT VARIABLES ===');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('PORT:', process.env.PORT);
-console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
-console.log('=============================');
+// Session middleware - simple and reliable
+app.use(session({
+  secret: 'ash-educational-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  name: 'ash-admin-session',
+  cookie: {
+    secure: false, // Set to false for development, will be true in production with HTTPS
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    httpOnly: true,
+    sameSite: 'lax'
+  }
+}));
 
-// Simple CORS configuration
+// CORS configuration
 app.use(cors({
   origin: true, // Allow all origins for simplicity
   credentials: true
 }));
 
-// Then body parsers
+// Body parsers
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Static files LAST
+// Static files
 app.use(express.static(path.join(__dirname, 'frontend')));
 
 // Ensure data directory exists
@@ -89,46 +96,7 @@ function initializeTables() {
     }
   });
 
-  // Create admin users table
-  db.run(`CREATE TABLE IF NOT EXISTS admin_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating admin_users table:', err);
-    } else {
-      console.log(' Admin users table created successfully');
-      
-      // Create default admin user if not exists
-      const defaultUsername = 'admin';
-      const defaultPassword = 'admin123';
-      
-      // Check if admin user exists
-      db.get('SELECT * FROM admin_users WHERE username = ?', [defaultUsername], (err, user) => {
-        if (err) {
-          console.error('Error checking admin user:', err);
-          return;
-        }
-        
-        if (!user) {
-          // Hash the password and create admin user
-          const hashedPassword = bcrypt.hashSync(defaultPassword, 10);
-          db.run('INSERT INTO admin_users (username, password) VALUES (?, ?)', 
-            [defaultUsername, hashedPassword], (err) => {
-            if (err) {
-              console.error('Error creating default admin user:', err);
-            } else {
-              console.log(` Default admin user created: ${defaultUsername}/${defaultPassword}`);
-            }
-          });
-        } else {
-          console.log(` Admin user already exists: ${defaultUsername}`);
-        }
-      });
-    }
-  });
+  // Admin users table no longer needed - using hardcoded credentials
 }
 
 // API Routes
@@ -292,109 +260,28 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Simple test endpoint without auth
+// Simple test endpoint
 app.get('/api/test', (req, res) => {
   res.json({ 
     message: 'API is working',
     timestamp: new Date().toISOString(),
-    environment: {
-      NODE_ENV: process.env.NODE_ENV,
-      ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
-      PORT: process.env.PORT
-    },
-    headers: {
-      origin: req.headers.origin || 'same-origin'
-    }
+    session: req.session ? 'active' : 'none'
   });
 });
 
-// Simple PUT test endpoint without auth
-app.put('/api/test', (req, res) => {
-  res.json({ 
-    message: 'PUT API is working',
-    timestamp: new Date().toISOString(),
-    method: 'PUT',
-    body: req.body,
-    headers: {
-      authorization: req.headers.authorization || 'missing',
-      'content-type': req.headers['content-type'] || 'missing'
-    }
-  });
-});
-
-// PUT test endpoint with auth to isolate the issue
-app.put('/api/test-auth', requireAuth, (req, res) => {
-  res.json({ 
-    message: 'PUT API with auth is working',
-    timestamp: new Date().toISOString(),
-    method: 'PUT',
-    body: req.body,
-    user: req.user
-  });
-});
-
-// JWT Authentication Middleware
+// Simple Authentication Middleware - Session based
 function requireAuth(req, res, next) {
-  console.log('=== JWT AUTH DEBUG START ===');
-  console.log('Method:', req.method);
-  console.log('URL:', req.url);
-  console.log('Request headers received:', Object.keys(req.headers));
-  console.log('Content-Type:', req.headers['content-type']);
-  
-  const authHeader = req.headers.authorization;
-  console.log('Auth header:', authHeader ? 'present' : 'missing');
-  console.log('JWT_SECRET used:', JWT_SECRET ? 'set' : 'not set');
-  console.log('JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.log('❌ No Authorization header or invalid format');
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Authorization header required' 
-    });
-  }
-  
-  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  console.log('Token received:', token.substring(0, 50) + '...');
-  
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('✅ JWT verification successful for user:', decoded.username);
-    console.log('Decoded token:', decoded);
-    req.user = decoded; // Attach user info to request
-    console.log('=== JWT AUTH DEBUG END === SUCCESS ===');
+  if (req.session && req.session.authenticated) {
     return next();
-  } catch (jwtError) {
-    console.log('❌ JWT verification failed:', jwtError.message);
-    console.log('JWT error name:', jwtError.name);
-    console.log('This usually means JWT_SECRET mismatch or expired token');
-    
-    // Try to decode without verification to see the token content
-    try {
-      const decoded = jwt.decode(token);
-      console.log('Token content (without verification):', decoded);
-    } catch (decodeError) {
-      console.log('Token decode failed:', decodeError.message);
-    }
-    
-    console.log('=== JWT AUTH DEBUG END === FAILED ===');
-    return res.status(401).json({ 
-      success: false, 
-      message: 'Invalid or expired token',
-      debug: {
-        error: jwtError.message,
-        tokenLength: token.length,
-        jwtSecretSet: !!JWT_SECRET
-      }
-    });
   }
+  res.status(401).json({ 
+    success: false, 
+    message: 'Authentication required' 
+  });
 }
 
-// Admin login endpoint
+// Admin login endpoint - Simple session based
 app.post('/api/admin/login', (req, res) => {
-  console.log('=== LOGIN ATTEMPT ===');
-  console.log('Request body:', req.body);
-  
   const { username, password } = req.body;
   
   if (!username || !password) {
@@ -404,67 +291,38 @@ app.post('/api/admin/login', (req, res) => {
     });
   }
   
-  // Look up user in database
-  const sql = 'SELECT * FROM admin_users WHERE username = ?';
-  db.get(sql, [username], (err, user) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ success: false, message: 'Database error' });
-    }
-    
-    if (!user) {
-      console.log('User not found:', username);
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid username or password' 
-      });
-    }
-    
-    // Verify password
-    const isPasswordValid = bcrypt.compareSync(password, user.password);
-    if (!isPasswordValid) {
-      console.log('Invalid password for user:', username);
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Invalid username or password' 
-      });
-    }
-    
-    // Generate JWT token
-    console.log('=== JWT TOKEN GENERATION ===');
-    console.log('JWT_SECRET used for signing:', JWT_SECRET ? 'set' : 'not set');
-    console.log('JWT_SECRET length:', JWT_SECRET ? JWT_SECRET.length : 0);
-    
-    const token = jwt.sign(
-      { 
-        id: user.id, 
-        username: user.username,
-        iat: Math.floor(Date.now() / 1000)
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-    
-    console.log('✅ JWT token generated successfully');
-    console.log('Token length:', token.length);
-    console.log('Token preview:', token.substring(0, 50) + '...');
+  // Simple credential check
+  if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+    // Set session
+    req.session.authenticated = true;
+    req.session.username = username;
     
     console.log('✅ Login successful for user:', username);
     res.json({ 
       success: true, 
       message: 'Login successful',
-      token: token,
       user: {
-        id: user.id,
-        username: user.username
+        username: username
       }
     });
-  });
+  } else {
+    console.log('❌ Invalid credentials for user:', username);
+    res.status(401).json({ 
+      success: false, 
+      message: 'Invalid username or password' 
+    });
+  }
 });
 
-// Simple admin logout endpoint
+// Admin logout endpoint
 app.post('/api/admin/logout', (req, res) => {
-  res.json({ success: true, message: 'Logout successful' });
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ success: false, message: 'Logout failed' });
+    }
+    res.json({ success: true, message: 'Logout successful' });
+  });
 });
 
 // Protected admin endpoints
