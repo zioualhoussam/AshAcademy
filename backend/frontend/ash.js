@@ -98,12 +98,40 @@ function submitContact() {
 function submitEnrollment() {
   const name  = document.getElementById('e-name').value.trim();
   const phone = document.getElementById('e-phone').value.trim();
-  const course = document.getElementById('e-course').value.trim();
+  const course = document.getElementById('e-prog').value.trim();
   
+  // Enhanced validation
   if (!name || !phone || !course) {
     showToast('⚠️ Please fill in all required fields.');
     return;
   }
+  
+  // Name validation
+  if (name.length < 2 || name.length > 100) {
+    showToast('⚠️ Name must be between 2 and 100 characters.');
+    return;
+  }
+  
+  // Phone validation (Moroccan format)
+  const phoneRegex = /^(?:(?:\+|00)212|0)[6-7]\d{8}$/;
+  if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
+    showToast('⚠️ Please enter a valid Moroccan phone number (06/07XXXXXXXX or +212XXXXXXXXX).');
+    return;
+  }
+  
+  // Course validation
+  if (course === 'Primary School Support' || course === 'Middle School Support' || course === 'High School Preparation' || course === 'University Level Courses' || course === 'Board Games Activities') {
+    // Valid course selected
+  } else {
+    showToast('⚠️ Please select a course.');
+    return;
+  }
+  
+  // Show loading state
+  const submitBtn = document.querySelector('#enroll-modal .btn[onclick="submitEnrollment()"]');
+  const originalText = submitBtn.textContent;
+  submitBtn.textContent = 'Submitting...';
+  submitBtn.disabled = true;
   
   // Send enrollment to backend
   fetch('/api/enroll', {
@@ -123,7 +151,7 @@ function submitEnrollment() {
       showToast('✅ Enrollment submitted! We will contact you soon.');
       document.getElementById('e-name').value = '';
       document.getElementById('e-phone').value = '';
-      document.getElementById('e-course').value = '';
+      document.getElementById('e-prog').selectedIndex = 0;
       closeEnroll();
     } else {
       showToast('❌ Error submitting enrollment: ' + data.message);
@@ -132,5 +160,10 @@ function submitEnrollment() {
   .catch(error => {
     console.error('Enrollment error:', error);
     showToast('❌ Error submitting enrollment. Please try again.');
+  })
+  .finally(() => {
+    // Restore button state
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
   });
 }
