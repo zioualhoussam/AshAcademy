@@ -47,6 +47,8 @@ const db = new sqlite3.Database('./ash_database.db', (err) => {
 });
 
 function initializeTables() {
+  console.log('=== INITIALIZING DATABASE TABLES ===');
+  
   // Create enrollments table
   db.run(`CREATE TABLE IF NOT EXISTS enrollments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,7 +57,13 @@ function initializeTables() {
     course TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating enrollments table:', err);
+    } else {
+      console.log(' Enrollments table created successfully');
+    }
+  });
 
   // Create contacts table
   db.run(`CREATE TABLE IF NOT EXISTS contacts (
@@ -65,7 +73,13 @@ function initializeTables() {
     message TEXT NOT NULL,
     status TEXT DEFAULT 'new',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating contacts table:', err);
+    } else {
+      console.log(' Contacts table created successfully');
+    }
+  });
 
   // Create admin users table
   db.run(`CREATE TABLE IF NOT EXISTS admin_users (
@@ -74,8 +88,10 @@ function initializeTables() {
     password TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`, (err) => {
-    if (!err) {
-      // Create default admin user if not exists
+    if (err) {
+      console.error('Error creating admin_users table:', err);
+    } else {
+      console.log(' Admin users table created successfully');
       const defaultPassword = bcrypt.hashSync('admin123', 10);
       db.run(`INSERT OR IGNORE INTO admin_users (username, password) VALUES (?, ?)`, 
         ['admin', defaultPassword]);
@@ -87,10 +103,14 @@ function initializeTables() {
 
 // Enrollment endpoint
 app.post('/api/enroll', (req, res) => {
+  console.log('=== ENROLLMENT REQUEST RECEIVED ===');
+  console.log('Request body:', req.body);
+  
   const { name, phone, course } = req.body;
   
   // Enhanced validation
   if (!name || !phone || !course) {
+    console.log('Validation failed - missing fields');
     return res.status(400).json({ 
       success: false, 
       message: 'Missing required fields: name, phone, and course are required' 
@@ -99,6 +119,7 @@ app.post('/api/enroll', (req, res) => {
   
   // Name validation
   if (typeof name !== 'string' || name.length < 2 || name.length > 100) {
+    console.log('Validation failed - invalid name');
     return res.status(400).json({ 
       success: false, 
       message: 'Name must be between 2 and 100 characters' 
@@ -109,6 +130,7 @@ app.post('/api/enroll', (req, res) => {
   const phoneRegex = /^(?:(?:\+|00)212|0)[6-7]\d{8}$/;
   const cleanPhone = phone.replace(/\s/g, '');
   if (!phoneRegex.test(cleanPhone)) {
+    console.log('Validation failed - invalid phone:', cleanPhone);
     return res.status(400).json({ 
       success: false, 
       message: 'Please enter a valid Moroccan phone number' 
@@ -117,12 +139,14 @@ app.post('/api/enroll', (req, res) => {
   
   // Course validation
   if (typeof course !== 'string' || course.length < 2 || course.length > 100) {
+    console.log('Validation failed - invalid course');
     return res.status(400).json({ 
       success: false, 
       message: 'Please select a valid course' 
     });
   }
 
+  console.log('Validation passed, inserting into database...');
   const sql = 'INSERT INTO enrollments (name, phone, course) VALUES (?, ?, ?)';
   db.run(sql, [name, cleanPhone, course], function(err) {
     if (err) {
@@ -133,7 +157,7 @@ app.post('/api/enroll', (req, res) => {
       });
     }
     
-    console.log(`New enrollment: ${name} - ${course} (${cleanPhone})`);
+    console.log(`SUCCESS: New enrollment saved - ${name} - ${course} (${cleanPhone}) - ID: ${this.lastID}`);
     res.json({ 
       success: true, 
       message: `Thank you ${name}! Your enrollment for ${course} has been received. We will contact you within 24 hours.`,
@@ -144,10 +168,14 @@ app.post('/api/enroll', (req, res) => {
 
 // Contact endpoint
 app.post('/api/contact', (req, res) => {
+  console.log('=== CONTACT REQUEST RECEIVED ===');
+  console.log('Request body:', req.body);
+  
   const { name, email, message } = req.body;
   
   // Enhanced validation
   if (!name || !email || !message) {
+    console.log('Validation failed - missing fields');
     return res.status(400).json({ 
       success: false, 
       message: 'Missing required fields: name, email, and message are required' 
@@ -156,6 +184,7 @@ app.post('/api/contact', (req, res) => {
 
   // Name validation
   if (typeof name !== 'string' || name.length < 2 || name.length > 100) {
+    console.log('Validation failed - invalid name');
     return res.status(400).json({ 
       success: false, 
       message: 'Name must be between 2 and 100 characters' 
@@ -165,6 +194,7 @@ app.post('/api/contact', (req, res) => {
   // Email validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
+    console.log('Validation failed - invalid email:', email);
     return res.status(400).json({ 
       success: false, 
       message: 'Please enter a valid email address' 
@@ -173,12 +203,14 @@ app.post('/api/contact', (req, res) => {
 
   // Message validation
   if (typeof message !== 'string' || message.length < 10 || message.length > 1000) {
+    console.log('Validation failed - invalid message length');
     return res.status(400).json({ 
       success: false, 
       message: 'Message must be between 10 and 1000 characters' 
     });
   }
 
+  console.log('Validation passed, inserting into database...');
   const sql = 'INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)';
   db.run(sql, [name, email, message], function(err) {
     if (err) {
@@ -189,7 +221,7 @@ app.post('/api/contact', (req, res) => {
       });
     }
     
-    console.log(`New contact from ${name} (${email})`);
+    console.log(`SUCCESS: New contact saved - ${name} (${email}) - ID: ${this.lastID}`);
     res.json({ 
       success: true, 
       message: `Thank you ${name}! Your message has been received. We'll reply to ${email} within 24 hours.`,
