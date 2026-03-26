@@ -89,26 +89,54 @@ function initializeTables() {
 app.post('/api/enroll', (req, res) => {
   const { name, phone, course } = req.body;
   
+  // Enhanced validation
   if (!name || !phone || !course) {
     return res.status(400).json({ 
       success: false, 
-      message: 'Missing required fields' 
+      message: 'Missing required fields: name, phone, and course are required' 
+    });
+  }
+  
+  // Name validation
+  if (typeof name !== 'string' || name.length < 2 || name.length > 100) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Name must be between 2 and 100 characters' 
+    });
+  }
+  
+  // Phone validation (Moroccan format)
+  const phoneRegex = /^(?:(?:\+|00)212|0)[6-7]\d{8}$/;
+  const cleanPhone = phone.replace(/\s/g, '');
+  if (!phoneRegex.test(cleanPhone)) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Please enter a valid Moroccan phone number' 
+    });
+  }
+  
+  // Course validation
+  if (typeof course !== 'string' || course.length < 2 || course.length > 100) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Please select a valid course' 
     });
   }
 
   const sql = 'INSERT INTO enrollments (name, phone, course) VALUES (?, ?, ?)';
-  db.run(sql, [name, phone, course], function(err) {
+  db.run(sql, [name, cleanPhone, course], function(err) {
     if (err) {
       console.error('Error inserting enrollment:', err.message);
       return res.status(500).json({ 
         success: false, 
-        message: 'Database error' 
+        message: 'Database error: Unable to save enrollment' 
       });
     }
     
+    console.log(`New enrollment: ${name} - ${course} (${cleanPhone})`);
     res.json({ 
       success: true, 
-      message: `Thank you ${name}! Enrollment received for ${course}.`,
+      message: `Thank you ${name}! Your enrollment for ${course} has been received. We will contact you within 24 hours.`,
       enrollmentId: this.lastID
     });
   });
@@ -118,10 +146,36 @@ app.post('/api/enroll', (req, res) => {
 app.post('/api/contact', (req, res) => {
   const { name, email, message } = req.body;
   
+  // Enhanced validation
   if (!name || !email || !message) {
     return res.status(400).json({ 
       success: false, 
-      message: 'Missing required fields' 
+      message: 'Missing required fields: name, email, and message are required' 
+    });
+  }
+
+  // Name validation
+  if (typeof name !== 'string' || name.length < 2 || name.length > 100) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Name must be between 2 and 100 characters' 
+    });
+  }
+
+  // Email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Please enter a valid email address' 
+    });
+  }
+
+  // Message validation
+  if (typeof message !== 'string' || message.length < 10 || message.length > 1000) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Message must be between 10 and 1000 characters' 
     });
   }
 
@@ -131,13 +185,14 @@ app.post('/api/contact', (req, res) => {
       console.error('Error inserting contact:', err.message);
       return res.status(500).json({ 
         success: false, 
-        message: 'Database error' 
+        message: 'Database error: Unable to save contact message' 
       });
     }
     
+    console.log(`New contact from ${name} (${email})`);
     res.json({ 
       success: true, 
-      message: `Message sent! We'll reply to ${email} shortly.`,
+      message: `Thank you ${name}! Your message has been received. We'll reply to ${email} within 24 hours.`,
       contactId: this.lastID
     });
   });
@@ -302,6 +357,7 @@ app.get('/api/admin/stats', requireAuth, (req, res) => {
   const enrollmentsSql = 'SELECT COUNT(*) as count FROM enrollments';
   const contactsSql = 'SELECT COUNT(*) as count FROM contacts';
   const pendingSql = 'SELECT COUNT(*) as count FROM enrollments WHERE status = "pending"';
+  const approvedSql = 'SELECT COUNT(*) as count FROM enrollments WHERE status = "approved"';
   
   db.get(enrollmentsSql, [], (err, enrollRow) => {
     if (err) return res.status(500).json({ success: false, message: 'Database error' });
@@ -312,13 +368,16 @@ app.get('/api/admin/stats', requireAuth, (req, res) => {
       db.get(pendingSql, [], (err, pendingRow) => {
         if (err) return res.status(500).json({ success: false, message: 'Database error' });
         
-        res.json({
-          success: true,
-          data: {
-            totalEnrollments: enrollRow.count,
-            totalContacts: contactRow.count,
-            pendingEnrollments: pendingRow.count
-          }
+        db.get(approvedSql, [], (err, approvedRow) => {
+          if (err) return res.status(500).json({ success: false, message: 'Database error' });
+          
+          res.json({
+            success: true,
+            total: enrollRow.count,
+            contacts: contactRow.count,
+            pending: pendingRow.count,
+            approved: approvedRow.count
+          });
         });
       });
     });
