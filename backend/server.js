@@ -82,9 +82,7 @@ function initializeTables() {
       console.error('Error creating admin_users table:', err);
     } else {
       console.log(' Admin users table created successfully');
-      const defaultPassword = bcrypt.hashSync('admin123', 10);
-      db.run(`INSERT OR IGNORE INTO admin_users (username, password) VALUES (?, ?)`, 
-        ['admin', defaultPassword]);
+      // No longer using database authentication, so skip creating default admin user
     }
   });
 }
