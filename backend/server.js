@@ -272,10 +272,19 @@ app.get('/api/test', (req, res) => {
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   
+  console.log('=== AUTH DEBUG ===');
+  console.log('Method:', req.method);
+  console.log('URL:', req.url);
+  console.log('Auth header:', authHeader);
+  console.log('Expected:', `Bearer ${ADMIN_PASSWORD}`);
+  console.log('Match:', authHeader === `Bearer ${ADMIN_PASSWORD}`);
+  
   if (authHeader === `Bearer ${ADMIN_PASSWORD}`) {
+    console.log('✅ Authentication successful');
     return next();
   }
   
+  console.log('❌ Authentication failed');
   res.status(401).json({ 
     success: false, 
     message: 'Authentication required' 
