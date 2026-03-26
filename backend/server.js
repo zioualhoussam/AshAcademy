@@ -262,8 +262,27 @@ app.get('/api/test', (req, res) => {
   res.json({ 
     message: 'API is working',
     timestamp: new Date().toISOString(),
+    environment: {
+      NODE_ENV: process.env.NODE_ENV,
+      ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+      PORT: process.env.PORT
+    },
     headers: {
       origin: req.headers.origin || 'same-origin'
+    }
+  });
+});
+
+// Simple PUT test endpoint without auth
+app.put('/api/test', (req, res) => {
+  res.json({ 
+    message: 'PUT API is working',
+    timestamp: new Date().toISOString(),
+    method: 'PUT',
+    body: req.body,
+    headers: {
+      authorization: req.headers.authorization || 'missing',
+      'content-type': req.headers['content-type'] || 'missing'
     }
   });
 });
