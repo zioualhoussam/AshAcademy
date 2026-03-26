@@ -70,8 +70,13 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (data.success) {
-            // Store the simple token
-            localStorage.setItem('adminToken', data.token);
+            // Store the token with proper formatting
+            const token = data.token ? data.token.trim() : '';
+            localStorage.setItem('adminToken', token);
+            
+            console.log('Login successful, token stored:', token);
+            console.log('Token length:', token.length);
+            
             showToast('Login successful! Welcome back.', 'success');
             showDashboard();
         } else {
@@ -156,10 +161,8 @@ async function authenticatedFetch(url, options = {}) {
     console.log('URL:', url);
     console.log('Method:', options.method || 'GET');
     console.log('Token from localStorage:', token);
-    console.log('Headers being sent:', {
-        'Authorization': token ? `Bearer ${token}` : 'MISSING',
-        ...options.headers
-    });
+    console.log('Token type:', typeof token);
+    console.log('Token length:', token ? token.length : 'null');
     
     if (!token) {
         console.log('❌ No token found, showing login');
@@ -167,15 +170,28 @@ async function authenticatedFetch(url, options = {}) {
         throw new Error('No authentication token');
     }
     
+    // Ensure token is trimmed and properly formatted
+    const cleanToken = token.trim();
+    const authHeader = `Bearer ${cleanToken}`;
+    
+    console.log('Clean token:', cleanToken);
+    console.log('Auth header:', authHeader);
+    console.log('Headers being sent:', {
+        'Authorization': authHeader,
+        'Content-Type': options.headers?.['Content-Type'] || 'not set',
+        ...options.headers
+    });
+    
     const response = await fetch(url, {
         headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': authHeader,
             ...options.headers
         },
         ...options
     });
     
     console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     
     if (response.status === 401) {
         console.log('❌ 401 response, clearing token and showing login');

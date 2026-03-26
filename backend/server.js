@@ -280,17 +280,38 @@ function requireAuth(req, res, next) {
   console.log('Auth header:', authHeader);
   console.log('Expected:', `Bearer ${ADMIN_PASSWORD}`);
   console.log('ADMIN_PASSWORD:', ADMIN_PASSWORD);
-  console.log('Match:', authHeader === `Bearer ${ADMIN_PASSWORD}`);
+  console.log('Auth header type:', typeof authHeader);
+  console.log('Expected type:', typeof `Bearer ${ADMIN_PASSWORD}`);
+  console.log('Auth header length:', authHeader ? authHeader.length : 'null');
+  console.log('Expected length:', `Bearer ${ADMIN_PASSWORD}`.length);
   
-  if (authHeader === `Bearer ${ADMIN_PASSWORD}`) {
+  // Trim whitespace and compare
+  const cleanAuthHeader = authHeader ? authHeader.trim() : '';
+  const expectedHeader = `Bearer ${ADMIN_PASSWORD}`.trim();
+  
+  console.log('Clean auth header:', cleanAuthHeader);
+  console.log('Clean expected:', expectedHeader);
+  console.log('Match:', cleanAuthHeader === expectedHeader);
+  
+  if (cleanAuthHeader === expectedHeader) {
     console.log('✅ Authentication successful');
     return next();
   }
   
   console.log('❌ Authentication failed');
+  console.log('Detailed comparison:');
+  console.log('- Received:', JSON.stringify(authHeader));
+  console.log('- Expected:', JSON.stringify(`Bearer ${ADMIN_PASSWORD}`));
+  
   res.status(401).json({ 
     success: false, 
-    message: 'Authentication required' 
+    message: 'Authentication required',
+    debug: {
+      received: authHeader,
+      expected: `Bearer ${ADMIN_PASSWORD}`,
+      method: req.method,
+      url: req.url
+    }
   });
 }
 
